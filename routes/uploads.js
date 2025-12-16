@@ -1,42 +1,39 @@
 const express = require('express');
 const multer = require('multer');
-const path = require('path');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('cloudinary').v2;
 const { auth } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// Configure multer for Cloudinary uploads
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'noap-uploads',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx', 'mp4', 'avi', 'mov'],
+    transformation: [{ width: 1000, height: 1000, crop: 'limit' }],
   },
 });
 
 const upload = multer({
   storage,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|pdf/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-
-    if (mimetype && extname) {
-      return cb(null, true);
-    } else {
-      cb(new Error('Invalid file type'));
-    }
+    fileSize: 10 * 1024 * 1024, // 10MB limit
   },
 });
 
 // Upload product images
 router.post('/products', auth, upload.array('images', 5), (req, res) => {
   try {
-    const fileUrls = req.files.map(file => `/uploads/${file.filename}`);
+    const fileUrls = req.files.map(file => file.path);
     res.send({ message: 'Product images uploaded successfully', urls: fileUrls });
   } catch (e) {
     res.status(500).send(e);
@@ -46,7 +43,7 @@ router.post('/products', auth, upload.array('images', 5), (req, res) => {
 // Upload certificates
 router.post('/certificates', auth, upload.single('certificate'), (req, res) => {
   try {
-    const fileUrl = `/uploads/${req.file.filename}`;
+    const fileUrl = req.file.path;
     res.send({ message: 'Certificate uploaded successfully', url: fileUrl });
   } catch (e) {
     res.status(500).send(e);
@@ -56,7 +53,7 @@ router.post('/certificates', auth, upload.single('certificate'), (req, res) => {
 // Upload profile photos
 router.post('/profiles', auth, upload.single('profilePhoto'), (req, res) => {
   try {
-    const fileUrl = `/uploads/${req.file.filename}`;
+    const fileUrl = req.file.path;
     res.send({ message: 'Profile photo uploaded successfully', url: fileUrl });
   } catch (e) {
     res.status(500).send(e);
