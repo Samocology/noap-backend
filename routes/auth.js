@@ -11,12 +11,18 @@ const router = express.Router();
 // School Signup
 router.post('/school/signup', async (req, res) => {
   try {
+    // Check if school with this email already exists
+    const existingSchool = await School.findOne({ 'contact.email': req.body.contact?.email });
+    if (existingSchool) {
+      return res.status(400).send({ error: 'Email already in use' });
+    }
+
     const school = new School(req.body);
     await school.save();
     const token = jwt.sign({ _id: school._id, role: 'school' }, process.env.JWT_SECRET);
     res.status(201).send({ school, token });
   } catch (e) {
-    res.status(400).send(e);
+    res.status(400).send({ error: e.message });
   }
 });
 
