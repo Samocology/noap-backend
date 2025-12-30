@@ -17,10 +17,55 @@ router.post('/school/signup', async (req, res) => {
       return res.status(400).send({ error: 'Email already in use' });
     }
 
-    const school = new School(req.body);
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    const school = new School({
+      ...req.body,
+      otp,
+      otpExpires,
+    });
     await school.save();
+
+    // Send OTP email
+    const transporter = nodemailer.createTransporter({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    await transporter.sendMail({
+      to: req.body.contact.email,
+      from: process.env.EMAIL_USER,
+      subject: 'OTP for School Registration',
+      text: `Your OTP for school registration is: ${otp}. It expires in 10 minutes.`,
+    });
+
+    res.status(201).send({ message: 'OTP sent to your email. Please verify to complete registration.' });
+  } catch (e) {
+    res.status(400).send({ error: e.message });
+  }
+});
+
+// Verify School OTP
+router.post('/school/verify-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const school = await School.findOne({ 'contact.email': email, otp, otpExpires: { $gt: Date.now() } });
+    if (!school) {
+      return res.status(400).send({ error: 'Invalid or expired OTP' });
+    }
+
+    school.isVerified = true;
+    school.otp = undefined;
+    school.otpExpires = undefined;
+    await school.save();
+
     const token = jwt.sign({ _id: school._id, role: 'school' }, process.env.JWT_SECRET);
-    res.status(201).send({ school, token });
+    res.send({ school, token });
   } catch (e) {
     res.status(400).send({ error: e.message });
   }

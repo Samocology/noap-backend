@@ -35,6 +35,16 @@ const schoolSchema = new mongoose.Schema({
       country: String,
     },
   },
+  otp: {
+    type: String,
+  },
+  otpExpires: {
+    type: Date,
+  },
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
