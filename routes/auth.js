@@ -1,12 +1,17 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
+const Nylas = require('nylas');
 const Member = require('../models/Member');
 const School = require('../models/School');
 const UserRole = require('../models/UserRole');
 
 const router = express.Router();
+
+// Configure Nylas
+const nylas = new Nylas({
+  apiKey: process.env.NYLAS_API_KEY,
+});
 
 // School Signup
 router.post('/school/signup', async (req, res) => {
@@ -29,19 +34,11 @@ router.post('/school/signup', async (req, res) => {
     await school.save();
 
     // Send OTP email
-    const transporter = nodemailer.createTransporter({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    await transporter.sendMail({
-      to: req.body.contact.email,
-      from: process.env.EMAIL_USER,
+    await nylas.messages.send({
+      to: [{ email: req.body.contact.email }],
+      from: [{ email: process.env.EMAIL_USER }],
       subject: 'OTP for School Registration',
-      text: `Your OTP for school registration is: ${otp}. It expires in 10 minutes.`,
+      body: `Your OTP for school registration is: ${otp}. It expires in 10 minutes.`,
     });
 
     res.status(201).send({ message: 'OTP sent to your email. Please verify to complete registration.' });
@@ -145,7 +142,7 @@ router.post('/password-reset', async (req, res) => {
 
     const resetToken = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
       service: 'gmail', // or your email service
       auth: {
         user: process.env.EMAIL_USER,
