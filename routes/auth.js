@@ -22,24 +22,25 @@ const transporter = nodemailer.createTransport({
 // School Signup
 router.post('/school/signup', async (req, res) => {
   try {
-    // Validate required fields
-    const { name, password, contact } = req.body;
+    // Validate required fields from a flat request body
+    const { name, password, email, phone, tier, status, address } = req.body;
     console.log('Request body:', req.body); // Debug log
+
     if (!name) {
       return res.status(400).send({ error: 'School name is required' });
     }
     if (!password) {
       return res.status(400).send({ error: 'Password is required' });
     }
-    if (!contact?.email) {
+    if (!email) {
       return res.status(400).send({ error: 'Email is required' });
     }
-    if (!contact?.phone) {
+    if (!phone) {
       return res.status(400).send({ error: 'Phone number is required' });
     }
 
     // Check if school with this email already exists
-    const existingSchool = await School.findOne({ 'contact.email': req.body.contact?.email });
+    const existingSchool = await School.findOne({ 'contact.email': email });
     if (existingSchool) {
       return res.status(400).send({ error: 'Email already in use' });
     }
@@ -51,9 +52,17 @@ router.post('/school/signup', async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
+    // Construct the School object with a nested contact field
     const school = new School({
-      ...req.body,
+      name,
       password: hashedPassword,
+      contact: {
+        email,
+        phone,
+        address,
+      },
+      tier,
+      status,
       otp,
       otpExpires,
     });
@@ -62,7 +71,7 @@ router.post('/school/signup', async (req, res) => {
     // Send OTP email
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
-      to: req.body.contact.email,
+      to: email,
       subject: 'OTP for School Registration',
       html: `<p>Your OTP for school registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
     });
