@@ -24,8 +24,18 @@ router.post('/school/signup', async (req, res) => {
   try {
     // Validate required fields
     const { name, password, contact } = req.body;
-    if (!name || !password || !contact?.email || !contact?.phone) {
-      return res.status(400).send({ error: 'Name, password, email, and phone are required' });
+    console.log('Request body:', req.body); // Debug log
+    if (!name) {
+      return res.status(400).send({ error: 'School name is required' });
+    }
+    if (!password) {
+      return res.status(400).send({ error: 'Password is required' });
+    }
+    if (!contact?.email) {
+      return res.status(400).send({ error: 'Email is required' });
+    }
+    if (!contact?.phone) {
+      return res.status(400).send({ error: 'Phone number is required' });
     }
 
     // Check if school with this email already exists
@@ -78,7 +88,7 @@ router.post('/school/verify-otp', async (req, res) => {
     await school.save();
 
     const token = jwt.sign({ _id: school._id, role: 'school' }, process.env.JWT_SECRET);
-    const { password, ...schoolResponse } = school.toObject();
+    const { password: _, ...schoolResponse } = school.toObject();
     res.send({ school: schoolResponse, token });
   } catch (e) {
     res.status(400).send({ error: e.message });
@@ -101,7 +111,8 @@ router.post('/school/login', async (req, res) => {
     }
 
     const token = jwt.sign({ _id: school._id, role: 'school' }, process.env.JWT_SECRET);
-    res.send({ school, token });
+    const { password: _, ...schoolResponse } = school.toObject();
+    res.send({ school: schoolResponse, token });
   } catch (e) {
     res.status(400).send(e);
   }
