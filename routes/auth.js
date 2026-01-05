@@ -38,7 +38,7 @@ router.post('/school/signup', async (req, res) => {
       to: [{ email: req.body.contact.email }],
       from: [{ email: process.env.EMAIL_USER }],
       subject: 'OTP for School Registration',
-      body: 'Your OTP for school registration is: ' + otp + '. It expires in 10 minutes.',
+      body: `<p>Your OTP for school registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
     });
 
     res.status(201).send({ message: 'OTP sent to your email. Please verify to complete registration.' });
