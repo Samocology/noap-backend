@@ -23,7 +23,8 @@ const transporter = nodemailer.createTransport({
 router.post('/school/signup', async (req, res) => {
   try {
     // Validate required fields from a flat request body
-    const { name, password, email, phone, tier, status, address } = req.body;
+    const { name, password, email, phone, tier, status, street, city, state, country, zipCode } = req.body;
+    let { address } = req.body;
     console.log('Request body:', req.body); // Debug log
 
     if (!name) {
@@ -38,19 +39,37 @@ router.post('/school/signup', async (req, res) => {
     if (!phone) {
       return res.status(400).send({ error: 'Phone number is required' });
     }
+    console.log('Initial validation passed.');
 
     // Check if school with this email already exists
+    console.log('Checking for existing school...');
     const existingSchool = await School.findOne({ 'contact.email': email });
     if (existingSchool) {
+      console.log('School with this email already exists.');
       return res.status(400).send({ error: 'Email already in use' });
     }
+    console.log('No existing school found.');
 
     // Hash password
+    console.log('Hashing password...');
     const hashedPassword = await bcrypt.hash(password, 12);
+    console.log('Password hashed.');
 
     // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    console.log('OTP generated.');
+
+    // Construct address object from various possible request formats
+    let addressObject;
+    if (req.body.contact && typeof req.body.contact.address === 'object') {
+        addressObject = req.body.contact.address;
+    } else if (typeof address === 'string') {
+        addressObject = { street: address, city, state, country, zipCode };
+    } else if (street || city || state || country) {
+        addressObject = { street, city, state, country, zipCode };
+    }
+
 
     // Construct the School object with a nested contact field
     const school = new School({
@@ -59,25 +78,32 @@ router.post('/school/signup', async (req, res) => {
       contact: {
         email,
         phone,
-        address,
+        address: addressObject,
       },
       tier,
       status,
       otp,
       otpExpires,
     });
+    console.log('School object created:', school);
+
+    console.log('Saving school to database...');
     await school.save();
+    console.log('School saved successfully.');
 
     // Send OTP email
+    console.log('Sending OTP email...');
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: email,
       subject: 'OTP for School Registration',
       html: `<p>Your OTP for school registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
     });
+    console.log('OTP email sent successfully.');
 
     res.status(201).send({ message: 'OTP sent to your email. Please verify to complete registration.' });
   } catch (e) {
+    console.error('Error in school signup:', e);
     res.status(400).send({ error: e.message });
   }
 });
