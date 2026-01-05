@@ -16,7 +16,6 @@ const nylas = new Nylas({
 // School Signup
 router.post('/school/signup', async (req, res) => {
   try {
-    console.log('req.body:', req.body);
     // Check if school with this email already exists
     const existingSchool = await School.findOne({ 'contact.email': req.body.contact?.email });
     if (existingSchool) {
