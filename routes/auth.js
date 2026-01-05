@@ -22,6 +22,12 @@ const transporter = nodemailer.createTransport({
 // School Signup
 router.post('/school/signup', async (req, res) => {
   try {
+    // Validate required fields
+    const { name, password, contact } = req.body;
+    if (!name || !password || !contact?.email || !contact?.phone) {
+      return res.status(400).send({ error: 'Name, password, email, and phone are required' });
+    }
+
     // Check if school with this email already exists
     const existingSchool = await School.findOne({ 'contact.email': req.body.contact?.email });
     if (existingSchool) {
@@ -29,7 +35,7 @@ router.post('/school/signup', async (req, res) => {
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(req.body.password, 12);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
     // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
