@@ -16,6 +16,7 @@ const nylas = new Nylas({
 // School Signup
 router.post('/school/signup', async (req, res) => {
   try {
+    console.log('req.body:', req.body);
     // Check if school with this email already exists
     const existingSchool = await School.findOne({ 'contact.email': req.body.contact?.email });
     if (existingSchool) {
@@ -38,7 +39,7 @@ router.post('/school/signup', async (req, res) => {
       to: [{ email: req.body.contact.email }],
       from: [{ email: process.env.EMAIL_USER }],
       subject: 'OTP for School Registration',
-      body: `Your OTP for school registration is: ${otp}. It expires in 10 minutes.`,
+      body: 'Your OTP for school registration is: ' + otp + '. It expires in 10 minutes.',
     });
 
     res.status(201).send({ message: 'OTP sent to your email. Please verify to complete registration.' });
