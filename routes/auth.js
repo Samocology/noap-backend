@@ -1,16 +1,22 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const Nylas = require('nylas');
+const nodemailer = require('nodemailer');
 const Member = require('../models/Member');
 const School = require('../models/School');
 const UserRole = require('../models/UserRole');
 
 const router = express.Router();
 
-// Configure Nylas
-const nylas = new Nylas({
-  apiKey: process.env.NYLAS_API_KEY,
+// Configure nodemailer with Brevo
+const transporter = nodemailer.createTransporter({
+  host: 'smtp-relay.brevo.com',
+  port: 587,
+  secure: false, // true for 465, false for other ports
+  auth: {
+    user: process.env.BREVO_LOGIN, // Your Brevo login
+    pass: process.env.BREVO_API_KEY, // Your Brevo API key
+  },
 });
 
 // School Signup
@@ -34,11 +40,11 @@ router.post('/school/signup', async (req, res) => {
     await school.save();
 
     // Send OTP email
-    await nylas.messages.send({
-      to: [{ email: req.body.contact.email }],
-      from: [{ email: process.env.EMAIL_USER }],
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: req.body.contact.email,
       subject: 'OTP for School Registration',
-      body: `<p>Your OTP for school registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
+      html: `<p>Your OTP for school registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
     });
 
     res.status(201).send({ message: 'OTP sent to your email. Please verify to complete registration.' });
@@ -142,19 +148,11 @@ router.post('/password-reset', async (req, res) => {
 
     const resetToken = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-    const transporter = nodemailer.createTransport({
-      service: 'gmail', // or your email service
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
     await transporter.sendMail({
-      to: req.body.email,
       from: process.env.EMAIL_USER,
+      to: req.body.email,
       subject: 'Password Reset',
-      text: `Click the link to reset your password: http://localhost:3000/reset-password/${resetToken}`,
+      html: `<p>Click the link to reset your password: <a href="http://localhost:3000/reset-password/${resetToken}">Reset Password</a></p>`,
     });
     res.send({ message: 'Password reset email sent' });
   } catch (e) {

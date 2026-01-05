@@ -1,12 +1,18 @@
 const express = require('express');
-const Nylas = require('nylas');
+const nodemailer = require('nodemailer');
 const { auth } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Configure Nylas
-const nylas = new Nylas({
-  apiKey: process.env.NYLAS_API_KEY,
+// Configure nodemailer with Brevo
+const transporter = nodemailer.createTransporter({
+  host: 'smtp-relay.brevo.com',
+  port: 587,
+  secure: false, // true for 465, false for other ports
+  auth: {
+    user: process.env.BREVO_LOGIN, // Your Brevo login
+    pass: process.env.BREVO_API_KEY, // Your Brevo API key
+  },
 });
 
 // Send booking confirmation email
@@ -30,11 +36,11 @@ router.post('/booking-confirmation', auth, async (req, res) => {
       `,
     };
 
-    await nylas.messages.send({
-      to: [{ email }],
-      from: [{ email: process.env.EMAIL_USER }],
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
       subject: mailOptions.subject,
-      body: mailOptions.html,
+      html: mailOptions.html,
     });
     res.send({ message: 'Booking confirmation email sent' });
   } catch (e) {
@@ -59,11 +65,11 @@ router.post('/certificate-delivery', auth, async (req, res) => {
       `,
     };
 
-    await nylas.messages.send({
-      to: [{ email }],
-      from: [{ email: process.env.EMAIL_USER }],
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
       subject: mailOptions.subject,
-      body: mailOptions.html,
+      html: mailOptions.html,
     });
     res.send({ message: 'Certificate delivery email sent' });
   } catch (e) {
