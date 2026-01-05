@@ -15,13 +15,20 @@ const transporter = nodemailer.createTransport({
   secure: false, // true for 465, false for other ports
   auth: {
     user: process.env.BREVO_LOGIN, // Your Brevo login
-    pass: process.env.BREVO_API_KEY, // Your Brevo API key
+    pass: process.env.BREVO_SMTP_KEY, // Your Brevo SMTP key
   },
 });
 
 // School Signup
 router.post('/school/signup', async (req, res) => {
   try {
+
+    // Check for email configuration
+    if (!process.env.BREVO_LOGIN || !process.env.BREVO_SMTP_KEY || !process.env.EMAIL_USER) {
+      console.error('Email service is not configured. Cannot send OTP. Please check environment variables (BREVO_LOGIN, BREVO_SMTP_KEY, EMAIL_USER).');
+      return res.status(500).send({ error: 'Email service is not configured on the server.' });
+    }
+
     // Validate required fields from a flat request body
     const { name, password, email, phone, tier, status, street, city, state, country, zipCode } = req.body;
     let { address } = req.body;
