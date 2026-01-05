@@ -28,12 +28,16 @@ router.post('/school/signup', async (req, res) => {
       return res.status(400).send({ error: 'Email already in use' });
     }
 
+    // Hash password
+    const hashedPassword = await bcrypt.hash(req.body.password, 12);
+
     // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     const school = new School({
       ...req.body,
+      password: hashedPassword,
       otp,
       otpExpires,
     });
@@ -68,7 +72,8 @@ router.post('/school/verify-otp', async (req, res) => {
     await school.save();
 
     const token = jwt.sign({ _id: school._id, role: 'school' }, process.env.JWT_SECRET);
-    res.send({ school, token });
+    const { password, ...schoolResponse } = school.toObject();
+    res.send({ school: schoolResponse, token });
   } catch (e) {
     res.status(400).send({ error: e.message });
   }
@@ -77,10 +82,18 @@ router.post('/school/verify-otp', async (req, res) => {
 // School Login
 router.post('/school/login', async (req, res) => {
   try {
-    const school = await School.findOne({ 'contact.email': req.body.email });
+    const { email, password } = req.body;
+    const school = await School.findOne({ 'contact.email': email });
     if (!school) {
-      return res.status(400).send({ error: 'Invalid login credentials' });
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
+
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, school.password);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
     const token = jwt.sign({ _id: school._id, role: 'school' }, process.env.JWT_SECRET);
     res.send({ school, token });
   } catch (e) {

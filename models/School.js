@@ -16,6 +16,10 @@ const schoolSchema = new mongoose.Schema({
     enum: ['active', 'inactive', 'suspended'],
     default: 'active',
   },
+  password: {
+    type: String,
+    required: true,
+  },
   contact: {
     email: {
       type: String,
