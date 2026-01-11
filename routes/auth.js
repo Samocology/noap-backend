@@ -105,6 +105,84 @@ router.post('/school/signup', async (req, res) => {
   }
 });
 
+// Send/Resend School OTP
+router.post('/school/send-otp', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).send({ error: 'Email is required' });
+    }
+
+    const school = await School.findOne({ 'contact.email': email });
+    if (!school) {
+      return res.status(404).send({ error: 'School not found' });
+    }
+
+    // Generate new OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    school.otp = otp;
+    school.otpExpires = otpExpires;
+    await school.save();
+
+    // Send response immediately
+    res.send({ message: 'OTP sent to your email.' });
+
+    // Send OTP email asynchronously in the background
+    transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'OTP for School Registration',
+      html: `<p>Your OTP for school registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
+    }).catch(err => {
+      console.error('Error sending OTP email:', err);
+    });
+  } catch (e) {
+    console.error('Error in send OTP:', e);
+    res.status(400).send({ error: e.message });
+  }
+});
+
+// Resend School OTP
+router.post('/school/resend-otp', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).send({ error: 'Email is required' });
+    }
+
+    const school = await School.findOne({ 'contact.email': email });
+    if (!school) {
+      return res.status(404).send({ error: 'School not found' });
+    }
+
+    // Generate new OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    school.otp = otp;
+    school.otpExpires = otpExpires;
+    await school.save();
+
+    // Send response immediately
+    res.send({ message: 'OTP resent to your email.' });
+
+    // Send OTP email asynchronously in the background
+    transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'OTP for School Registration (Resent)',
+      html: `<p>Your OTP for school registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
+    }).catch(err => {
+      console.error('Error resending OTP email:', err);
+    });
+  } catch (e) {
+    console.error('Error in resend OTP:', e);
+    res.status(400).send({ error: e.message });
+  }
+});
+
 // Verify School OTP
 router.post('/school/verify-otp', async (req, res) => {
   try {
