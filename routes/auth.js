@@ -231,6 +231,30 @@ router.post('/school/login', async (req, res) => {
 // Member Signup
 router.post('/member/signup', async (req, res) => {
   try {
+    // Check for email configuration
+    if (!process.env.BREVO_LOGIN || !process.env.BREVO_SMTP_KEY || !process.env.EMAIL_USER) {
+      console.error('Email service is not configured. Cannot send OTP. Please check environment variables (BREVO_LOGIN, BREVO_SMTP_KEY, EMAIL_USER).');
+      return res.status(500).send({ error: 'Email service is not configured on the server.' });
+    }
+
+    // Validate required fields
+    const { name, password, email } = req.body;
+    if (!name) {
+      return res.status(400).send({ error: 'Name is required' });
+    }
+    if (!password) {
+      return res.status(400).send({ error: 'Password is required' });
+    }
+    if (!email) {
+      return res.status(400).send({ error: 'Email is required' });
+    }
+
+    // Check if member with this email already exists
+    const existingMember = await Member.findOne({ email });
+    if (existingMember) {
+      return res.status(400).send({ error: 'Email already in use' });
+    }
+
     // Find or create the 'member' role
     let memberRole = await UserRole.findOne({ name: 'member' });
     if (!memberRole) {
@@ -238,14 +262,34 @@ router.post('/member/signup', async (req, res) => {
       await memberRole.save();
     }
 
-    const hashedPassword = await bcrypt.hash(req.body.password, 8);
-    const memberData = { ...req.body, password: hashedPassword, role: memberRole._id };
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    const memberData = { ...req.body, password: hashedPassword, role: memberRole._id, otp, otpExpires };
     const member = new Member(memberData);
     await member.save();
-    const token = jwt.sign({ _id: member._id, role: 'member' }, process.env.JWT_SECRET);
-    res.status(201).send({ member, token });
+
+    // Send response immediately
+    res.status(201).send({ message: 'OTP sent to your email. Please verify to complete registration.' });
+
+    // Send OTP email asynchronously in the background
+    transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'OTP for Member Registration',
+      html: `<p>Your OTP for member registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
+    }).catch(err => {
+      console.error('Error sending OTP email:', err);
+      // Note: Since the response is already sent, we can't notify the user here.
+      // In a production app, you might want to implement a retry mechanism or notify via another channel.
+    });
   } catch (e) {
-    res.status(400).send(e);
+    console.error('Error in member signup:', e);
+    res.status(400).send({ error: e.message });
   }
 });
 

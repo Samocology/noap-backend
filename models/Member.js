@@ -63,6 +63,16 @@ const memberSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
+  otp: {
+    type: String,
+  },
+  otpExpires: {
+    type: Date,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -74,7 +84,8 @@ const memberSchema = new mongoose.Schema({
 });
 
 memberSchema.pre('save', async function(next) {
-  if (this.isModified('password')) {
+  // Only hash password if it's not already hashed (check if it starts with $2)
+  if (this.isModified('password') && !this.password.startsWith('$2')) {
     this.password = await bcrypt.hash(this.password, 8);
   }
   this.updatedAt = Date.now();
