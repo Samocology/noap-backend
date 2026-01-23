@@ -11,7 +11,7 @@ const transporter = nodemailer.createTransport({
   secure: false, // true for 465, false for other ports
   auth: {
     user: process.env.BREVO_LOGIN, // Your Brevo login
-    pass: process.env.BREVO_API_KEY, // Your Brevo API key
+    pass: process.env.BREVO_SMTP_KEY, // Your Brevo SMTP key
   },
 });
 

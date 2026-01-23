@@ -85,20 +85,19 @@ router.post('/school/signup', async (req, res) => {
 
     await school.save();
 
-    // Send response immediately
-    res.status(201).send({ message: 'OTP sent to your email. Please verify to complete registration.' });
-
-    // Send OTP email asynchronously in the background
-    transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'OTP for School Registration',
-      html: `<p>Your OTP for school registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
-    }).catch(err => {
+    // Send OTP email synchronously
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'OTP for School Registration',
+        html: `<p>Your OTP for school registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
+      });
+      res.status(201).send({ message: 'OTP sent to your email. Please verify to complete registration.' });
+    } catch (err) {
       console.error('Error sending OTP email:', err);
-      // Note: Since the response is already sent, we can't notify the user here.
-      // In a production app, you might want to implement a retry mechanism or notify via another channel.
-    });
+      return res.status(500).send({ error: 'Failed to send OTP email' });
+    }
   } catch (e) {
     console.error('Error in school signup:', e);
     res.status(400).send({ error: e.message });
@@ -126,18 +125,19 @@ router.post('/school/send-otp', async (req, res) => {
     school.otpExpires = otpExpires;
     await school.save();
 
-    // Send response immediately
-    res.send({ message: 'OTP sent to your email.' });
-
-    // Send OTP email asynchronously in the background
-    transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'OTP for School Registration',
-      html: `<p>Your OTP for school registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
-    }).catch(err => {
+    // Send OTP email synchronously
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'OTP for School Registration',
+        html: `<p>Your OTP for school registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
+      });
+      res.send({ message: 'OTP sent to your email.' });
+    } catch (err) {
       console.error('Error sending OTP email:', err);
-    });
+      return res.status(500).send({ error: 'Failed to send OTP email' });
+    }
   } catch (e) {
     console.error('Error in send OTP:', e);
     res.status(400).send({ error: e.message });
@@ -165,18 +165,19 @@ router.post('/school/resend-otp', async (req, res) => {
     school.otpExpires = otpExpires;
     await school.save();
 
-    // Send response immediately
-    res.send({ message: 'OTP resent to your email.' });
-
-    // Send OTP email asynchronously in the background
-    transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'OTP for School Registration (Resent)',
-      html: `<p>Your OTP for school registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
-    }).catch(err => {
+    // Send OTP email synchronously
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'OTP for School Registration (Resent)',
+        html: `<p>Your OTP for school registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
+      });
+      res.send({ message: 'OTP resent to your email.' });
+    } catch (err) {
       console.error('Error resending OTP email:', err);
-    });
+      return res.status(500).send({ error: 'Failed to resend OTP email' });
+    }
   } catch (e) {
     console.error('Error in resend OTP:', e);
     res.status(400).send({ error: e.message });
@@ -273,20 +274,19 @@ router.post('/member/signup', async (req, res) => {
     const member = new Member(memberData);
     await member.save();
 
-    // Send response immediately
-    res.status(201).send({ message: 'OTP sent to your email. Please verify to complete registration.' });
-
-    // Send OTP email asynchronously in the background
-    transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'OTP for Member Registration',
-      html: `<p>Your OTP for member registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
-    }).catch(err => {
+    // Send OTP email synchronously
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'OTP for Member Registration',
+        html: `<p>Your OTP for member registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
+      });
+      res.status(201).send({ message: 'OTP sent to your email. Please verify to complete registration.' });
+    } catch (err) {
       console.error('Error sending OTP email:', err);
-      // Note: Since the response is already sent, we can't notify the user here.
-      // In a production app, you might want to implement a retry mechanism or notify via another channel.
-    });
+      return res.status(500).send({ error: 'Failed to send OTP email' });
+    }
   } catch (e) {
     console.error('Error in member signup:', e);
     res.status(400).send({ error: e.message });
