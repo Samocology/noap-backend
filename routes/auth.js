@@ -12,14 +12,17 @@ const router = express.Router();
 const transporter = nodemailer.createTransport({
   host: 'smtp-relay.brevo.com',
   port: 587,
-  secure: false, // true for 465, false for other ports
+  secure: false, // Use STARTTLS for port 587
   auth: {
     user: process.env.BREVO_LOGIN, // Your Brevo login
     pass: process.env.BREVO_SMTP_KEY, // Your Brevo SMTP key
   },
-  connectionTimeout: 120000, // 120 seconds
-  greetingTimeout: 120000,
-  socketTimeout: 120000,
+  connectionTimeout: 60000, // 60 seconds
+  greetingTimeout: 30000,
+  socketTimeout: 60000,
+  tls: {
+    rejectUnauthorized: false, // Allow self-signed certificates
+  },
 });
 
 // Retry function for sending emails
@@ -106,11 +109,14 @@ router.post('/school/signup', async (req, res) => {
     await school.save();
 
     // Send OTP email asynchronously with retry to avoid blocking the response
+    console.log('Attempting to send OTP email to:', email, 'with OTP:', otp);
     sendEmailWithRetry({
       from: process.env.EMAIL_USER,
       to: email,
       subject: 'OTP for School Registration',
       html: `<p>Your OTP for school registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
+    }).then(() => {
+      console.log('OTP email sent successfully to:', email);
     }).catch(err => {
       console.error('Error sending OTP email after retries:', err);
     });
