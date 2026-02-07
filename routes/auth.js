@@ -17,6 +17,9 @@ const transporter = nodemailer.createTransport({
     user: process.env.BREVO_LOGIN, // Your Brevo login
     pass: process.env.BREVO_SMTP_KEY, // Your Brevo SMTP key
   },
+  connectionTimeout: 60000, // 60 seconds
+  greetingTimeout: 60000,
+  socketTimeout: 60000,
 });
 
 // School Signup
