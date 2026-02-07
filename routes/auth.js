@@ -17,10 +17,27 @@ const transporter = nodemailer.createTransport({
     user: process.env.BREVO_LOGIN, // Your Brevo login
     pass: process.env.BREVO_SMTP_KEY, // Your Brevo SMTP key
   },
-  connectionTimeout: 60000, // 60 seconds
-  greetingTimeout: 60000,
-  socketTimeout: 60000,
+  connectionTimeout: 120000, // 120 seconds
+  greetingTimeout: 120000,
+  socketTimeout: 120000,
 });
+
+// Retry function for sending emails
+const sendEmailWithRetry = async (mailOptions, retries = 3, delay = 5000) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await transporter.sendMail(mailOptions);
+      return; // Success
+    } catch (err) {
+      console.error(`Email send attempt ${i + 1} failed:`, err.message);
+      if (i < retries - 1) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        throw err; // Final failure
+      }
+    }
+  }
+};
 
 // School Signup
 router.post('/school/signup', async (req, res) => {
@@ -88,14 +105,14 @@ router.post('/school/signup', async (req, res) => {
 
     await school.save();
 
-    // Send OTP email asynchronously to avoid blocking the response
-    transporter.sendMail({
+    // Send OTP email asynchronously with retry to avoid blocking the response
+    sendEmailWithRetry({
       from: process.env.EMAIL_USER,
       to: email,
       subject: 'OTP for School Registration',
       html: `<p>Your OTP for school registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
     }).catch(err => {
-      console.error('Error sending OTP email:', err);
+      console.error('Error sending OTP email after retries:', err);
     });
 
     res.status(201).send({ message: 'OTP sent to your email. Please verify to complete registration.' });
@@ -126,14 +143,14 @@ router.post('/school/send-otp', async (req, res) => {
     school.otpExpires = otpExpires;
     await school.save();
 
-    // Send OTP email asynchronously to avoid blocking the response
-    transporter.sendMail({
+    // Send OTP email asynchronously with retry to avoid blocking the response
+    sendEmailWithRetry({
       from: process.env.EMAIL_USER,
       to: email,
       subject: 'OTP for School Registration',
       html: `<p>Your OTP for school registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
     }).catch(err => {
-      console.error('Error sending OTP email:', err);
+      console.error('Error sending OTP email after retries:', err);
     });
 
     res.send({ message: 'OTP sent to your email.' });
@@ -164,19 +181,17 @@ router.post('/school/resend-otp', async (req, res) => {
     school.otpExpires = otpExpires;
     await school.save();
 
-    // Send OTP email synchronously
-    try {
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: email,
-        subject: 'OTP for School Registration (Resent)',
-        html: `<p>Your OTP for school registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
-      });
-      res.send({ message: 'OTP resent to your email.' });
-    } catch (err) {
+    // Send OTP email asynchronously to avoid blocking the response
+    transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'OTP for School Registration (Resent)',
+      html: `<p>Your OTP for school registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
+    }).catch(err => {
       console.error('Error resending OTP email:', err);
-      return res.status(500).send({ error: 'Failed to resend OTP email' });
-    }
+    });
+
+    res.send({ message: 'OTP resent to your email.' });
   } catch (e) {
     console.error('Error in resend OTP:', e);
     res.status(400).send({ error: e.message });
@@ -273,14 +288,14 @@ router.post('/member/signup', async (req, res) => {
     const member = new Member(memberData);
     await member.save();
 
-    // Send OTP email asynchronously to avoid blocking the response
-    transporter.sendMail({
+    // Send OTP email asynchronously with retry to avoid blocking the response
+    sendEmailWithRetry({
       from: process.env.EMAIL_USER,
       to: email,
       subject: 'OTP for Member Registration',
       html: `<p>Your OTP for member registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
     }).catch(err => {
-      console.error('Error sending OTP email:', err);
+      console.error('Error sending OTP email after retries:', err);
     });
 
     res.status(201).send({ message: 'OTP sent to your email. Please verify to complete registration.' });
