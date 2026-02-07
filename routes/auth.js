@@ -1,32 +1,55 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
+const https = require('https');
 const Member = require('../models/Member');
 const School = require('../models/School');
 const UserRole = require('../models/UserRole');
 
 const router = express.Router();
 
-// Configure nodemailer with Brevo
-const transporter = nodemailer.createTransport({
-  host: 'smtp-relay.brevo.com',
-  port: 465,
-  secure: true, // Use SMTPS for port 465
-  auth: {
-    user: process.env.BREVO_LOGIN, // Your Brevo login
-    pass: process.env.BREVO_SMTP_KEY, // Your Brevo SMTP key
-  },
-  connectionTimeout: 60000, // 60 seconds
-  greetingTimeout: 30000,
-  socketTimeout: 60000,
-});
-
-// Retry function for sending emails
+// Retry function for sending emails via Brevo API
 const sendEmailWithRetry = async (mailOptions, retries = 5, delay = 10000) => {
   for (let i = 0; i < retries; i++) {
     try {
-      await transporter.sendMail(mailOptions);
+      const data = JSON.stringify({
+        sender: { email: process.env.EMAIL_USER },
+        to: [{ email: mailOptions.to }],
+        subject: mailOptions.subject,
+        htmlContent: mailOptions.html,
+      });
+
+      const options = {
+        hostname: 'api.brevo.com',
+        port: 443,
+        path: '/v3/smtp/email',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': process.env.BREVO_SMTP_KEY, // Using SMTP key as API key
+          'Content-Length': Buffer.byteLength(data),
+        },
+      };
+
+      await new Promise((resolve, reject) => {
+        const req = https.request(options, (res) => {
+          let body = '';
+          res.on('data', (chunk) => {
+            body += chunk;
+          });
+          res.on('end', () => {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              resolve();
+            } else {
+              reject(new Error(`API error: ${res.statusCode} ${body}`));
+            }
+          });
+        });
+        req.on('error', reject);
+        req.write(data);
+        req.end();
+      });
+
       return; // Success
     } catch (err) {
       console.error(`Email send attempt ${i + 1} failed:`, err.message);
@@ -347,8 +370,7 @@ router.post('/password-reset', async (req, res) => {
 
     const resetToken = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+    await sendEmailWithRetry({
       to: req.body.email,
       subject: 'Password Reset',
       html: `<p>Click the link to reset your password: <a href="http://localhost:3000/reset-password/${resetToken}">Reset Password</a></p>`,
