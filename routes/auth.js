@@ -11,8 +11,8 @@ const router = express.Router();
 // Configure nodemailer with Brevo
 const transporter = nodemailer.createTransport({
   host: 'smtp-relay.brevo.com',
-  port: 587,
-  secure: false, // Use STARTTLS for port 587
+  port: 465,
+  secure: true, // Use SMTPS for port 465
   auth: {
     user: process.env.BREVO_LOGIN, // Your Brevo login
     pass: process.env.BREVO_SMTP_KEY, // Your Brevo SMTP key
@@ -20,13 +20,10 @@ const transporter = nodemailer.createTransport({
   connectionTimeout: 60000, // 60 seconds
   greetingTimeout: 30000,
   socketTimeout: 60000,
-  tls: {
-    rejectUnauthorized: false, // Allow self-signed certificates
-  },
 });
 
 // Retry function for sending emails
-const sendEmailWithRetry = async (mailOptions, retries = 3, delay = 5000) => {
+const sendEmailWithRetry = async (mailOptions, retries = 5, delay = 10000) => {
   for (let i = 0; i < retries; i++) {
     try {
       await transporter.sendMail(mailOptions);
