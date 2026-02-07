@@ -26,7 +26,7 @@ const sendEmailWithRetry = async (mailOptions, retries = 5, delay = 10000) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'api-key': process.env.BREVO_SMTP_KEY, // Using SMTP key as API key
+          'api-key': process.env.BREVO_API_KEY,
           'Content-Length': Buffer.byteLength(data),
         },
       };
@@ -66,8 +66,8 @@ const sendEmailWithRetry = async (mailOptions, retries = 5, delay = 10000) => {
 router.post('/school/signup', async (req, res) => {
   try {
     // Check for email configuration
-    if (!process.env.BREVO_LOGIN || !process.env.BREVO_SMTP_KEY || !process.env.EMAIL_USER) {
-      console.error('Email service is not configured. Cannot send OTP. Please check environment variables (BREVO_LOGIN, BREVO_SMTP_KEY, EMAIL_USER).');
+    if (!process.env.BREVO_API_KEY || !process.env.EMAIL_USER) {
+      console.error('Email service is not configured. Cannot send OTP. Please check environment variables (BREVO_API_KEY, EMAIL_USER).');
       return res.status(500).send({ error: 'Email service is not configured on the server.' });
     }
 
@@ -208,8 +208,7 @@ router.post('/school/resend-otp', async (req, res) => {
     await school.save();
 
     // Send OTP email asynchronously to avoid blocking the response
-    transporter.sendMail({
-      from: process.env.EMAIL_USER,
+    sendEmailWithRetry({
       to: email,
       subject: 'OTP for School Registration (Resent)',
       html: `<p>Your OTP for school registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
@@ -273,8 +272,8 @@ router.post('/school/login', async (req, res) => {
 router.post('/member/signup', async (req, res) => {
   try {
     // Check for email configuration
-    if (!process.env.BREVO_LOGIN || !process.env.BREVO_SMTP_KEY || !process.env.EMAIL_USER) {
-      console.error('Email service is not configured. Cannot send OTP. Please check environment variables (BREVO_LOGIN, BREVO_SMTP_KEY, EMAIL_USER).');
+    if (!process.env.BREVO_API_KEY || !process.env.EMAIL_USER) {
+      console.error('Email service is not configured. Cannot send OTP. Please check environment variables (BREVO_API_KEY, EMAIL_USER).');
       return res.status(500).send({ error: 'Email service is not configured on the server.' });
     }
 
