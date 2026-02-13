@@ -60,4 +60,62 @@ router.get('/messages', auth, schoolAuth, async (req, res) => {
   }
 });
 
+
+// Get all dashboard data
+router.get('/dashboard', auth, schoolAuth, async (req, res) => {
+  try {
+    const schoolId = req.user._id;
+
+    // Fetch students and schedules in parallel
+    const [students, schedules] = await Promise.all([
+      Student.find({ school: schoolId }),
+      TrainingSchedule.find({ school: schoolId }),
+    ]);
+
+    // 1. Active Students (students with progress > 0)
+    const activeStudents = students.filter(student => student.progress > 0).length;
+
+    // 2. Sessions this month
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const sessionsThisMonth = schedules.reduce((count, schedule) => {
+      return count + schedule.sessions.filter(session => {
+        const sessionDate = new Date(session.date);
+        return sessionDate >= startOfMonth && sessionDate <= endOfMonth;
+      }).length;
+    }, 0);
+
+    // 3. Certificates Earned
+    const studentIds = students.map(student => student._id);
+    const certificatesEarned = await Certificate.countDocuments({ recipient: { $in: studentIds } });
+
+    // 4. Average Progress
+    const totalProgress = students.reduce((sum, student) => sum + student.progress, 0);
+    const averageProgress = students.length > 0 ? totalProgress / students.length : 0;
+
+    // 5. Upcoming Sessions
+    const upcomingSessions = schedules.reduce((count, schedule) => {
+      return count + schedule.sessions.filter(session => new Date(session.date) > today).length;
+    }, 0);
+
+    // 6. Top Performers (top 5 students with highest progress)
+    const topPerformers = students
+      .sort((a, b) => b.progress - a.progress)
+      .slice(0, 5)
+      .map(student => ({ name: student.name, progress: student.progress }));
+
+    res.send({
+      activeStudents,
+      sessionsThisMonth,
+      certificatesEarned,
+      averageProgress: parseFloat(averageProgress.toFixed(2)),
+      upcomingSessions,
+      topPerformers,
+    });
+  } catch (e) {
+    res.status(500).send(e);
+  }
+});
+
 module.exports = router;

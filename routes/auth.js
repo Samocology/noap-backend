@@ -348,8 +348,8 @@ router.post('/member/login', async (req, res) => {
 router.post('/admin/login', async (req, res) => {
   try {
     // Assuming admin is a special member with admin role
-    const admin = await Member.findOne({ email: req.body.email });
-    if (!admin || !(await bcrypt.compare(req.body.password, admin.password)) || admin.role !== 'admin') {
+    const admin = await Member.findOne({ email: req.body.email }).populate('role');
+    if (!admin || !(await bcrypt.compare(req.body.password, admin.password)) || admin.role.name !== 'admin') {
       return res.status(400).send({ error: 'Invalid login credentials' });
     }
     const token = jwt.sign({ _id: admin._id, role: 'admin' }, process.env.JWT_SECRET);
