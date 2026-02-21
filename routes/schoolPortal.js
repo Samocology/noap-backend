@@ -100,8 +100,7 @@ router.get('/dashboard', auth, schoolAuth, async (req, res) => {
         .filter(session => new Date(session.date) > today)
         .map(session => ({
           date: session.date,
-          name: schedule.name, // Assuming schedule has a name for the session
-          location: schedule.location // Assuming schedule has a location for the session
+          name: session.topic,
         }));
     });
 
