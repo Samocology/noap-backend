@@ -52,9 +52,8 @@ const trainingScheduleSchema = new mongoose.Schema({
   },
 });
 
-trainingScheduleSchema.pre('save', function(next) {
+trainingScheduleSchema.pre('save', async function() {
   this.updatedAt = Date.now();
-  next();
 });
 
 module.exports = mongoose.model('TrainingSchedule', trainingScheduleSchema);

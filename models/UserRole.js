@@ -21,9 +21,8 @@ const userRoleSchema = new mongoose.Schema({
   },
 });
 
-userRoleSchema.pre('save', function(next) {
+userRoleSchema.pre('save', async function() {
   this.updatedAt = Date.now();
-  next();
 });
 
 module.exports = mongoose.model('UserRole', userRoleSchema);

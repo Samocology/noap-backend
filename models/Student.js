@@ -57,9 +57,8 @@ const studentSchema = new mongoose.Schema({
   },
 });
 
-studentSchema.pre('save', function(next) {
+studentSchema.pre('save', async function(next) {
   this.updatedAt = Date.now();
-  next();
 });
 
 module.exports = mongoose.model('Student', studentSchema);

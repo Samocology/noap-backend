@@ -39,9 +39,8 @@ const bookingSchema = new mongoose.Schema({
   },
 });
 
-bookingSchema.pre('save', function(next) {
+bookingSchema.pre('save', async function() {
   this.updatedAt = Date.now();
-  next();
 });
 
 module.exports = mongoose.model('Booking', bookingSchema);

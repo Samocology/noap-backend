@@ -61,9 +61,8 @@ const invoiceSchema = new mongoose.Schema({
   },
 });
 
-invoiceSchema.pre('save', function(next) {
+invoiceSchema.pre('save', async function() {
   this.updatedAt = Date.now();
-  next();
 });
 
 module.exports = mongoose.model('Invoice', invoiceSchema);

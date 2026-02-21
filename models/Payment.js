@@ -49,9 +49,8 @@ const paymentSchema = new mongoose.Schema({
   },
 });
 
-paymentSchema.pre('save', function(next) {
+paymentSchema.pre('save', async function() {
   this.updatedAt = Date.now();
-  next();
 });
 
 module.exports = mongoose.model('Payment', paymentSchema);
