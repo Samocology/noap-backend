@@ -1,6 +1,9 @@
 const express = require('express');
 const Certificate = require('../models/Certificate');
+const Student = require('../models/Student'); // Import Student model
 const { auth, adminAuth, memberAuth } = require('../middleware/auth');
+const { triggerDashboardUpdate } = require('../lib/dashboard'); // Import trigger
+
 
 const router = express.Router();
 
@@ -32,6 +35,13 @@ router.post('/', auth, memberAuth, async (req, res) => {
   try {
     const certificate = new Certificate(req.body);
     await certificate.save();
+
+    // Find the student to get the school ID
+    const student = await Student.findById(certificate.recipient);
+    if (student) {
+      triggerDashboardUpdate(student.school.toString()); // Trigger update
+    }
+
     res.status(201).send(certificate);
   } catch (e) {
     res.status(400).send(e);
@@ -56,6 +66,13 @@ router.patch('/:id', auth, async (req, res) => {
 
     updates.forEach((update) => certificate[update] = req.body[update]);
     await certificate.save();
+
+    // Find the student to get the school ID
+    const student = await Student.findById(certificate.recipient);
+    if (student) {
+      triggerDashboardUpdate(student.school.toString()); // Trigger update
+    }
+
     res.send(certificate);
   } catch (e) {
     res.status(400).send(e);
@@ -69,7 +86,29 @@ router.delete('/:id', auth, adminAuth, async (req, res) => {
     if (!certificate) {
       return res.status(404).send();
     }
+
+    // Find the student to get the school ID
+    const student = await Student.findById(certificate.recipient);
+    if (student) {
+      triggerDashboardUpdate(student.school.toString()); // Trigger update
+    }
+
     res.send(certificate);
+  } catch (e) {
+    res.status(500).send(e);
+  }
+});
+
+// Download certificate
+router.get('/:id/download', auth, async (req, res) => {
+  try {
+    const certificate = await Certificate.findById(req.params.id);
+    if (!certificate || !certificate.certificateUrl) {
+      return res.status(404).send({ error: 'Certificate not found or no downloadable link available.' });
+    }
+    // For now, we send the URL. The frontend can handle the download.
+    // A more secure implementation could stream the file from the server.
+    res.send({ downloadUrl: certificate.certificateUrl });
   } catch (e) {
     res.status(500).send(e);
   }

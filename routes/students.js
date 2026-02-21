@@ -1,6 +1,7 @@
 const express = require('express');
 const Student = require('../models/Student');
 const { auth, schoolAuth } = require('../middleware/auth');
+const { triggerDashboardUpdate } = require('../lib/dashboard');
 
 const router = express.Router();
 
@@ -32,6 +33,7 @@ router.post('/', auth, schoolAuth, async (req, res) => {
   try {
     const student = new Student({ ...req.body, school: req.user._id });
     await student.save();
+    triggerDashboardUpdate(req.user._id.toString()); // Trigger update
     res.status(201).send(student);
   } catch (e) {
     res.status(400).send(e);
@@ -56,6 +58,7 @@ router.patch('/:id', auth, async (req, res) => {
 
     updates.forEach((update) => student[update] = req.body[update]);
     await student.save();
+    triggerDashboardUpdate(student.school.toString()); // Trigger update
     res.send(student);
   } catch (e) {
     res.status(400).send(e);
@@ -69,6 +72,7 @@ router.delete('/:id', auth, schoolAuth, async (req, res) => {
     if (!student) {
       return res.status(404).send();
     }
+    triggerDashboardUpdate(student.school.toString()); // Trigger update
     res.send(student);
   } catch (e) {
     res.status(500).send(e);

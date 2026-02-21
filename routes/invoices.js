@@ -1,5 +1,6 @@
 const express = require('express');
 const Invoice = require('../models/Invoice');
+const PDFDocument = require('pdfkit');
 const { auth, adminAuth, schoolAuth } = require('../middleware/auth');
 
 const router = express.Router();
@@ -82,6 +83,41 @@ router.delete('/:id', auth, adminAuth, async (req, res) => {
     res.send(invoice);
   } catch (e) {
     res.status(500).send(e);
+  }
+});
+
+// Download invoice as PDF
+router.get('/:id/download', auth, async (req, res) => {
+  try {
+    const invoice = await Invoice.findById(req.params.id).populate('school', 'name');
+    if (!invoice) {
+      return res.status(404).send({ error: 'Invoice not found.' });
+    }
+
+    const doc = new PDFDocument({ margin: 50 });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=invoice-${invoice._id}.pdf`);
+
+    doc.pipe(res);
+
+    // Add content to the PDF
+    doc.fontSize(25).text('Invoice', { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(16).text(`Invoice ID: ${invoice._id}`);
+    doc.text(`School: ${invoice.school.name}`);
+    doc.text(`Amount: ${invoice.amount}`);
+    doc.text(`Status: ${invoice.status}`);
+    doc.text(`Due Date: ${new Date(invoice.dueDate).toLocaleDateString()}`);
+    if (invoice.paidDate) {
+      doc.text(`Paid on: ${new Date(invoice.paidDate).toLocaleDateString()}`);
+    }
+
+    doc.end();
+
+  } catch (e) {
+    console.error(e);
+    res.status(500).send({ error: 'Failed to generate PDF.' });
   }
 });
 
