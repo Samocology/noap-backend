@@ -16,8 +16,8 @@ const invoiceSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['unpaid', 'paid', 'overdue'],
-    default: 'unpaid',
+    enum: ['Unpaid', 'Partially Paid', 'Paid', 'Overdue'],
+    default: 'Unpaid',
   },
   dueDate: {
     type: Date,
@@ -25,6 +25,31 @@ const invoiceSchema = new mongoose.Schema({
   },
   paidDate: {
     type: Date,
+  },
+  paidAmount: {
+    type: Number,
+    default: 0,
+  },
+  balance: {
+    type: Number,
+  },
+  items: [
+    {
+      description: String,
+      qty: Number,
+      unitPrice: Number,
+      total: Number,
+    },
+  ],
+  subtotal: {
+    type: Number,
+  },
+  tax: {
+    type: Number,
+    default: 0,
+  },
+  total: {
+    type: Number,
   },
   createdAt: {
     type: Date,

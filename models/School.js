@@ -39,6 +39,10 @@ const schoolSchema = new mongoose.Schema({
       country: String,
     },
   },
+  creditBalance: {
+    type: Number,
+    default: 0,
+  },
   otp: {
     type: String,
   },

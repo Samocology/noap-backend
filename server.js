@@ -37,11 +37,20 @@ app.use('/api/students', require('./routes/students'));
 app.use('/api/messages', require('./routes/messages'));
 app.use('/api/invoices', require('./routes/invoices'));
 app.use('/api/bookings', require('./routes/bookings'));
-app.use('/api/payments', require('./routes/payments'));
+
+// Initialize io for payments route
+const paymentsRouter = require('./routes/payments');
+paymentsRouter.setIO(io);
+app.use('/api/payments', paymentsRouter);
+
 app.use('/api/uploads', require('./routes/uploads'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/search', require('./routes/search'));
-app.use('/api/school-portal', require('./routes/schoolPortal'));
+
+// Initialize io for school-portal route
+const schoolPortalRouter = require('./routes/schoolPortal');
+schoolPortalRouter.setIO(io);
+app.use('/api/school-portal', schoolPortalRouter);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
