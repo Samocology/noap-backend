@@ -95,9 +95,15 @@ router.get('/dashboard', auth, schoolAuth, async (req, res) => {
     const averageProgress = students.length > 0 ? totalProgress / students.length : 0;
 
     // 5. Upcoming Sessions
-    const upcomingSessions = schedules.reduce((count, schedule) => {
-      return count + schedule.sessions.filter(session => new Date(session.date) > today).length;
-    }, 0);
+    const upcomingSessions = schedules.flatMap(schedule => {
+      return schedule.sessions
+        .filter(session => new Date(session.date) > today)
+        .map(session => ({
+          date: session.date,
+          name: schedule.name, // Assuming schedule has a name for the session
+          location: schedule.location // Assuming schedule has a location for the session
+        }));
+    });
 
     // 6. Top Performers (top 5 students with highest progress)
     const topPerformers = students
