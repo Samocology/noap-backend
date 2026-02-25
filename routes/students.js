@@ -84,6 +84,76 @@ router.patch('/:id', auth, async (req, res) => {
   }
 });
 
+// PUT /api/students/:id - Update a student's progress and/or class information
+router.put('/:id', auth, async (req, res) => {
+  try {
+    const { progress, class: studentClass } = req.body;
+
+    // Validate progress value (must be 0-100 if provided)
+    if (progress !== undefined) {
+      if (typeof progress !== 'number' || progress < 0 || progress > 100) {
+        return res.status(400).json({ error: 'Invalid progress value. Must be a number between 0 and 100' });
+      }
+    }
+
+    // Validate class format (must be a string if provided)
+    if (studentClass !== undefined) {
+      if (typeof studentClass !== 'string' || studentClass.trim() === '') {
+        return res.status(400).json({ error: 'Invalid class format. Must be a non-empty string' });
+      }
+    }
+
+    // Find the student
+    const student = await Student.findById(req.params.id);
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    // Authorization: Check if user has permission to update this student
+    // School can update their own students, Member can update their own record
+    if (req.user.role === 'school') {
+      // Check if the student belongs to this school
+      if (student.school.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ error: "You don't have permission to update this student" });
+      }
+    } else if (req.user.role === 'member') {
+      // Member can only update their own student record
+      if (student._id.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ error: "You don't have permission to update this student" });
+      }
+    } else {
+      return res.status(403).json({ error: "You don't have permission to update this student" });
+    }
+
+    // Update the student with the provided fields
+    if (progress !== undefined) {
+      student.progress = progress;
+    }
+    if (studentClass !== undefined) {
+      student.class = studentClass;
+    }
+
+    await student.save();
+    
+    // Trigger dashboard update
+    triggerDashboardUpdate(student.school.toString());
+
+    // Return the updated student
+    res.send(student);
+  } catch (e) {
+    // Handle validation errors
+    if (e.errors) {
+      const errors = Object.values(e.errors).map(err => err.message);
+      return res.status(400).json({ error: errors.join(', ') });
+    }
+    // Handle invalid ObjectId
+    if (e.kind === 'ObjectId') {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+    res.status(500).json({ error: e.message || 'Failed to update student' });
+  }
+});
+
 // Delete student (school only)
 router.delete('/:id', auth, schoolAuth, async (req, res) => {
   try {
