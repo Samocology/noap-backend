@@ -53,7 +53,7 @@ router.post('/', auth, schoolAuth, async (req, res) => {
 // Update student
 router.patch('/:id', auth, async (req, res) => {
   const updates = Object.keys(req.body);
-  const allowedUpdates = ['name', 'email', 'progress', 'contact'];
+  const allowedUpdates = ['name', 'email', 'progress', 'contact', 'class'];
   const isValidOperation = updates.every((update) => allowedUpdates.includes(update));
 
   if (!isValidOperation) {

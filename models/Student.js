@@ -12,6 +12,11 @@ const studentSchema = new mongoose.Schema({
     unique: true,
     lowercase: true,
   },
+  class: {
+    type: String,
+    required: true,
+    trim: true,
+  },
   school: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'School',
