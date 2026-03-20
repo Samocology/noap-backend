@@ -344,6 +344,128 @@ router.post('/member/login', async (req, res) => {
   }
 });
 
+// Admin Signup
+router.post('/admin/signup', async (req, res) => {
+  try {
+    // Check for email configuration
+    if (!process.env.BREVO_API_KEY || !process.env.EMAIL_USER) {
+      console.error('Email service is not configured. Cannot send OTP. Please check environment variables (BREVO_API_KEY, EMAIL_USER).');
+      return res.status(500).send({ error: 'Email service is not configured on the server.' });
+    }
+
+    // Validate required fields
+    const { name, password, email } = req.body;
+    if (!name) {
+      return res.status(400).send({ error: 'Name is required' });
+    }
+    if (!password) {
+      return res.status(400).send({ error: 'Password is required' });
+    }
+    if (!email) {
+      return res.status(400).send({ error: 'Email is required' });
+    }
+
+    // Check if member with this email already exists
+    const existingMember = await Member.findOne({ email });
+    if (existingMember) {
+      return res.status(400).send({ error: 'Email already in use' });
+    }
+
+    // Find or create the 'admin' role
+    let adminRole = await UserRole.findOne({ name: 'admin' });
+    if (!adminRole) {
+      adminRole = new UserRole({ name: 'admin', permissions: ['read', 'write', 'delete', 'admin'] });
+      await adminRole.save();
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    const memberData = { ...req.body, password: hashedPassword, role: adminRole._id, otp, otpExpires };
+    const admin = new Member(memberData);
+    await admin.save();
+
+    // Send OTP email asynchronously with retry to avoid blocking the response
+    sendEmailWithRetry({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'OTP for Admin Registration',
+      html: `<p>Your OTP for admin registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
+    }).catch(err => {
+      console.error('Error sending OTP email after retries:', err);
+    });
+
+    res.status(201).send({ message: 'OTP sent to your email. Please verify to complete registration.' });
+  } catch (e) {
+    console.error('Error in admin signup:', e);
+    res.status(400).send({ error: e.message });
+  }
+});
+
+// Admin Send/Resend OTP
+router.post('/admin/send-otp', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).send({ error: 'Email is required' });
+    }
+
+    const admin = await Member.findOne({ email });
+    if (!admin) {
+      return res.status(404).send({ error: 'Admin not found' });
+    }
+
+    // Generate new OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    admin.otp = otp;
+    admin.otpExpires = otpExpires;
+    await admin.save();
+
+    // Send OTP email asynchronously with retry to avoid blocking the response
+    sendEmailWithRetry({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'OTP for Admin Registration',
+      html: `<p>Your OTP for admin registration is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
+    }).catch(err => {
+      console.error('Error sending OTP email after retries:', err);
+    });
+
+    res.send({ message: 'OTP sent to your email.' });
+  } catch (e) {
+    console.error('Error in admin send OTP:', e);
+    res.status(400).send({ error: e.message });
+  }
+});
+
+// Verify Admin OTP
+router.post('/admin/verify-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const admin = await Member.findOne({ email, otp, otpExpires: { $gt: Date.now() } }).populate('role');
+    if (!admin || admin.role.name !== 'admin') {
+      return res.status(400).send({ error: 'Invalid or expired OTP' });
+    }
+
+    admin.isVerified = true;
+    admin.otp = undefined;
+    admin.otpExpires = undefined;
+    await admin.save();
+
+    const token = jwt.sign({ _id: admin._id, role: 'admin' }, process.env.JWT_SECRET);
+    const { password: _, ...adminResponse } = admin.toObject();
+    res.send({ admin: adminResponse, token });
+  } catch (e) {
+    res.status(400).send({ error: e.message });
+  }
+});
+
 // Admin Login
 router.post('/admin/login', async (req, res) => {
   try {

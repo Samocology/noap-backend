@@ -8,8 +8,8 @@ const auth = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     let user;
 
-    if (decoded.role === 'member') {
-      user = await Member.findById(decoded._id);
+    if (decoded.role === 'member' || decoded.role === 'admin') {
+      user = await Member.findById(decoded._id).populate('role');
     } else if (decoded.role === 'school') {
       user = await School.findById(decoded._id);
     }
